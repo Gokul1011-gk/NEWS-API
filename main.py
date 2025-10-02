@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import os
@@ -16,33 +16,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load your NewsData.io API key from environment
 API_KEY = os.getenv("NEWSDATA_KEY")
 BASE_URL = "https://newsdata.io/api/1/news"
 
 @app.get("/trending")
-def get_trending(
-    category: str = Query(None),
-    country: str = Query(None),
-    page: int = Query(1),
-    limit: int = Query(10)
-):
+def get_global_news():
     params = {
         "apikey": API_KEY,
-        "language": "en",
-        "page": page,
-        "category": category,
-        "country": country
+        "language": "en"
     }
 
     try:
         response = requests.get(BASE_URL, params=params)
         response.raise_for_status()
         data = response.json()
-
-        # Limit the number of articles returned
-        articles = data.get("results", [])[:limit]
+        articles = data.get("results", [])
         return {"articles": articles}
 
     except requests.exceptions.RequestException as e:
         return {"error": str(e)}
+
+
