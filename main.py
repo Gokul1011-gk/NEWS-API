@@ -1,34 +1,48 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+import requests
+import os
 from dotenv import load_dotenv
-import requests, os
-from datetime import datetime
 
 load_dotenv()
+
 app = FastAPI()
 
-def get_newsdata_global():
-    try:
-        url = f"https://newsdata.io/api/1/news?apikey={os.getenv('NEWSDATA_KEY')}&language=en"
-        res = requests.get(url).json()
+# Optional: Allow public access from any frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-        results = res.get("results", [])
-        articles = []
-        for a in results:
-            if isinstance(a, dict):
-                articles.append({
-                    "title": a.get("title", "No title"),
-                    "source": a.get("source_id", "Unknown"),
-                    "url": a.get("link", ""),
-                    "publishedAt": a.get("pubDate", "")
-                })
-            if len(articles) >= 10:
-                break
-        return articles
-    except Exception as e:
-        print(f"NewsData.io error: {e}")
-        return []
+# Load your NewsData.io API key from environment
+API_KEY = os.getenv("NEWSDATA_KEY")
+BASE_URL = "https://newsdata.io/api/1/news"
 
 @app.get("/trending")
-def get_trending():
-    articles = get_newsdata_global()
-    return {"source": "NewsData.io", "articles": articles}
+def get_trending(
+    category: str = Query(None),
+    country: str = Query(None),
+    page: int = Query(1),
+    limit: int = Query(10)
+):
+    params = {
+        "apikey": API_KEY,
+        "language": "en",
+        "page": page,
+        "category": category,
+        "country": country
+    }
+
+    try:
+        response = requests.get(BASE_URL, params=params)
+        response.raise_for_status()
+        data = response.json()
+
+        # Limit the number of articles returned
+        articles = data.get("results", [])[:limit]
+        return {"articles": articles}
+
+    except requests.exceptions.RequestException as e:
+        return {"error": str(e)}
