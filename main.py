@@ -28,4 +28,3 @@ def get_global_news():
 
 
 
-
